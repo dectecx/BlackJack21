@@ -12,9 +12,15 @@
 
 using System.Reflection;
 
+// 牌庫
 List<Poker> pokers = null!;
+// 玩家數
 int playerCnt = 2;
+// 玩家清單
 List<Player> players = null!;
+// 池底
+int totalBet = 0;
+// 命令暫存
 string cmd = "i";
 
 /// <summary>
@@ -35,8 +41,64 @@ void Initial()
     players = new();
     for (int i = 0; i < playerCnt; i++)
     {
-        players.Add(new() { HandCards = new(), IsPass = false });
+        players.Add(new() { Id = i + 1, Chips = 100, Bet = 0, HandCards = new(), IsPass = false });
     }
+}
+
+/// <summary>
+/// 重開一局
+/// </summary>
+void Restart()
+{
+    foreach (Poker item in pokers)
+    {
+        item.IsUse = false;
+    }
+    foreach (Player item in players)
+    {
+        item.HandCards = new();
+        item.Bet = 0;
+        item.IsPass = item.Chips <= 0;
+    }
+}
+
+/// <summary>
+/// 印出總覽
+/// </summary>
+void PrintSummary()
+{
+    string msg = $"=====Summary=====\n" +
+        $"\t池底\t|\t{totalBet}\n" +
+        $"\t回合\t|\t玩家\t|\t點數\t|\t押注\t|\t爆牌機率\n";
+    foreach (Player player in players)
+    {
+         msg += $"\t{(player != null ? ">" : null)}\t|\t" +
+            $"{player.Id}\t|\t" +
+            $"{player.TotalPoint}\t|\t" +
+            $"{player.Bet}\t|\t" +
+            $"{0.0}\n";
+    }
+    Console.WriteLine(msg);
+}
+
+/// <summary>
+/// 印出提示訊息
+/// </summary>
+void PrintHint(List<Poker> handCards)
+{
+    double p1 = CalProbability(handCards);
+    string msg = $"爆牌的機率(P1):{p1}%\t不爆牌的機率(P2):{100-p1}%\t數字:押注籌碼 p:Pass";
+    Console.WriteLine(msg);
+}
+
+/// <summary>
+/// 計算機率
+/// </summary>
+double CalProbability(List<Poker> handCards)
+{
+    // TODO: 待完成功能
+    pokers.Where(x => !x.IsUse);
+    return 33.5;
 }
 
 while (cmd.ToLower() != "q")
@@ -45,44 +107,75 @@ while (cmd.ToLower() != "q")
     if (cmd.ToLower() == "i")
     {
         Initial();
+        cmd = "";
+    }
+    // 重開一局
+    if (cmd.ToLower() == "r")
+    {
+        Restart();
+        cmd = "";
+    }
+    // 檢查是否剩下一位
+    if (players.Where(x => !x.IsPass).Count() == 1)
+    {
+        Player player = players.Where(x => !x.IsPass).Single();
+        Console.WriteLine($"回合結束，勝者:玩家{player.Id}，獲得籌碼{totalBet}");
+        player.Chips += totalBet;
+        player.Bet = 0;
+        totalBet = 0;
+        
+        Console.WriteLine("i:重新開始\tr:重開一局\tq:結束遊戲");
+        cmd = Console.ReadLine()!;
+        continue;
     }
 
     for (int i = 0; i < players.Count; i++)
     {
+        Player player = players[i];
         // 略過已pass玩家
-        if (players[i].IsPass)
+        if (player.IsPass)
         {
             continue;
         }
 
-        Console.WriteLine($"玩家{i + 1}：目前點數共{players[i].TotalPoint}，g:抽牌 p:Pass");
+        PrintSummary();
+        PrintHint(player.HandCards);
         while (true)
         {
             cmd = Console.ReadLine()!;
-            if (cmd.ToLower() == "g")
+            if (int.TryParse(cmd, out int bet) && bet <= player.Chips)
             {
-                players[i].Gacha(pokers);
-                if (players[i].TotalPoint > 21)
+                player.Chips -= bet;
+                player.Bet += bet;
+                totalBet += bet;
+
+                player.Gacha(pokers);
+                if (player.TotalPoint > 21)
                 {
-                    players[i].IsPass = true;
-                    Console.WriteLine($"玩家{i + 1}：點數共{players[i].TotalPoint}，超過21點");
+                    player.IsPass = true;
+                    Console.WriteLine($"點數共{player.TotalPoint}，超過21點，您已出局");
                 }
                 break;
             }
             else if (cmd.ToLower() == "p")
             {
-                players[i].IsPass = true;
+                player.IsPass = true;
                 break;
             }
             else
             {
-                Console.WriteLine("輸入錯誤，請重新輸入，g:抽牌 p:Pass");
+                if (bet > player.Chips)
+                {
+                    Console.WriteLine($"籌碼不足(餘額:{player.Chips})，請重新輸入");
+                }
+                else
+                {
+                    Console.WriteLine("輸入格式錯誤，請重新輸入");
+                }
+                PrintHint(player.HandCards);
             }
         }
     }
-
-    Console.WriteLine("i:重新開始\tr:重開一局\tq:結束遊戲");
-    cmd = Console.ReadLine()!;
 }
 
 /// <summary>
@@ -162,6 +255,21 @@ class Poker
 /// </summary>
 class Player
 {
+    /// <summary>
+    /// 識別碼
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// 籌碼
+    /// </summary>
+    public int Chips { get; set; }
+
+    /// <summary>
+    /// 押注籌碼
+    /// </summary>
+    public int Bet { get; set; }
+
     /// <summary>
     /// 手牌
     /// </summary>
