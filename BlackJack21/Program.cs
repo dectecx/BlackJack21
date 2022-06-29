@@ -105,28 +105,6 @@ double CalProbability(List<Poker> handCards)
     return 33.5;
 }
 
-SystemInfo.Cmd = "i";
-while (SystemInfo.Cmd.ToLower() != "q")
-{
-    Action action = SystemInfo.Cmd.ToLower() switch
-    {
-        // 重新開始
-        "i" => new Action(() => { Initial(); SystemInfo.Cmd = "g"; }),
-        // 重開一局
-        "r" => new Action(() => { Restart(); SystemInfo.Cmd = "g"; }),
-        // 遊戲中
-        "g" => new Action(() => { Gaming(); SystemInfo.Cmd = ""; }),
-        // 指令錯誤
-        _ => new Action(() =>
-        {
-            Console.WriteLine("輸入格式錯誤，請重新輸入");
-            SystemInfo.Cmd = CmdHelper.GetExpectedInput(new[] { "i", "r" });
-        })
-    };
-    action.Invoke();
-}
-Console.WriteLine("遊戲結束");
-
 /// <summary>
 /// 遊戲中
 /// </summary>
@@ -142,7 +120,10 @@ void Gaming()
 
         // 決定接下來流程
         Console.WriteLine("i:重新開始\tr:重開一局\tq:結束遊戲");
-        SystemInfo.Cmd = CmdHelper.GetExpectedInput(new[] { "i", "r", "q" }, appendErrorMsg: "i:重新開始\tr:重開一局\tq:結束遊戲");
+        SystemInfo.Cmd = CmdHelper.GetExpectedInput(
+            expectedInputs: (input) => new[] { "i", "r", "q" }.Contains(input.ToLower()),
+            appendErrorMsg: "i:重新開始\tr:重開一局\tq:結束遊戲"
+        );
         // 返回狀態機跑流程
         return;
     }
@@ -158,40 +139,55 @@ void Gaming()
 
         PrintSummary();
         PrintHint(player.HandCards);
-        while (true)
+        SystemInfo.Cmd = CmdHelper.GetExpectedInput(
+            expectedInputs: (input) => input.ToLower() == "p" || (int.TryParse(input, out int bet) && bet <= player.Chips),
+            appendErrorMsg: $"籌碼餘額:{player.Chips}，請輸入押注籌碼(最大值:{player.Chips})"
+        );
+        if (SystemInfo.Cmd.ToLower() == "p")
         {
-            SystemInfo.Cmd = Console.ReadLine()!;
-            if (int.TryParse(SystemInfo.Cmd, out int bet) && bet <= player.Chips)
-            {
-                player.Chips -= bet;
-                player.Bet += bet;
-                SystemInfo.TotalBet += bet;
+            player.IsPass = true;
+        }
+        else
+        {
+            // 預期一定是數字,故不做安全轉換,若會報錯,表示程式有瑕疵
+            int bet = Convert.ToInt32(SystemInfo.Cmd);
+            player.Chips -= bet;
+            player.Bet += bet;
+            SystemInfo.TotalBet += bet;
 
-                player.Gacha(SystemInfo.Pokers);
-                if (player.TotalPoint > 21)
-                {
-                    player.IsPass = true;
-                    Console.WriteLine($"點數共{player.TotalPoint}，超過21點，您已出局");
-                }
-                break;
-            }
-            else if (SystemInfo.Cmd.ToLower() == "p")
+            player.Gacha(SystemInfo.Pokers);
+            if (player.TotalPoint > 21)
             {
                 player.IsPass = true;
-                break;
-            }
-            else
-            {
-                if (bet > player.Chips)
-                {
-                    Console.WriteLine($"籌碼不足(餘額:{player.Chips})，請重新輸入");
-                }
-                else
-                {
-                    Console.WriteLine("輸入格式錯誤，請重新輸入");
-                }
-                PrintHint(player.HandCards);
+                Console.WriteLine($"點數共{player.TotalPoint}，超過21點，您已出局");
             }
         }
     }
 }
+
+/* ============================== *
+ * ==========主程式入口========== *
+ * ============================== */
+SystemInfo.Cmd = "i";
+while (SystemInfo.Cmd.ToLower() != "q")
+{
+    Action action = SystemInfo.Cmd.ToLower() switch
+    {
+        // 重新開始
+        "i" => new Action(() => { Initial(); SystemInfo.Cmd = "g"; }),
+        // 重開一局
+        "r" => new Action(() => { Restart(); SystemInfo.Cmd = "g"; }),
+        // 遊戲中
+        "g" => new Action(() => { Gaming(); SystemInfo.Cmd = ""; }),
+        // 指令錯誤
+        _ => new Action(() =>
+        {
+            Console.WriteLine("輸入格式錯誤，請重新輸入");
+            SystemInfo.Cmd = CmdHelper.GetExpectedInput(
+                expectedInputs: (input) => new[] { "i", "r" }.Contains(input.ToLower())
+            );
+        })
+    };
+    action.Invoke();
+}
+Console.WriteLine("遊戲結束");

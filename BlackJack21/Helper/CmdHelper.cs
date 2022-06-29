@@ -10,18 +10,18 @@ public static class CmdHelper
     /// </summary>
     /// <param name="expectedInputs">預期的input</param>
     /// <param name="errorMsg">輸入非預期input時顯示的錯誤訊息</param>
-    /// <returns></returns>
+    /// <returns>預期的input</returns>
     public static string GetExpectedInput(
-        IEnumerable<string> expectedInputs,
+        Func<string, bool> expectedInputs,
         string errorMsg = "輸入格式錯誤，請重新輸入。",
         string appendErrorMsg = "")
     {
-        string tmp = Console.ReadLine()!;
-        while (!expectedInputs.Contains(tmp.ToLower()))
+        string input = Console.ReadLine()!;
+        while (!expectedInputs.Invoke(input))
         {
             Console.WriteLine(errorMsg + appendErrorMsg);
-            tmp = Console.ReadLine()!;
+            input = Console.ReadLine()!;
         }
-        return tmp;
+        return input;
     }
 }
