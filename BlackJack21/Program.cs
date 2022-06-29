@@ -52,16 +52,21 @@ void Initial()
 /// </summary>
 void Restart()
 {
+    // 從勝者開始
     SystemInfo.CurrentId = SystemInfo.Players.Where(x => !x.IsPass).Single().Id;
+    // 歸零池底
     SystemInfo.TotalBet = 0;
+    // 賦歸牌庫狀態
     foreach (Poker item in SystemInfo.Pokers)
     {
         item.IsUse = false;
     }
+    // 賦歸玩家狀態
     foreach (Player item in SystemInfo.Players)
     {
         item.HandCards = new();
         item.Bet = 0;
+        // 沒籌碼的人不能再玩
         item.IsPass = item.Chips <= 0;
     }
 }
@@ -110,24 +115,6 @@ double CalProbability(List<Poker> handCards)
 /// </summary>
 void Gaming()
 {
-    // 檢查是否剩下一位
-    if (SystemInfo.Players.Where(x => !x.IsPass).Count() == 1)
-    {
-        // 發放池底
-        Player player = SystemInfo.Players.Where(x => !x.IsPass).Single();
-        player.Chips += SystemInfo.TotalBet;
-        Console.WriteLine($"回合結束，勝者:玩家{player.Id}，獲得籌碼{SystemInfo.TotalBet}");
-
-        // 決定接下來流程
-        Console.WriteLine("i:重新開始\tr:重開一局\tq:結束遊戲");
-        SystemInfo.Cmd = CmdHelper.GetExpectedInput(
-            expectedInputs: (input) => new[] { "i", "r", "q" }.Contains(input.ToLower()),
-            appendErrorMsg: "i:重新開始\tr:重開一局\tq:結束遊戲"
-        );
-        // 返回狀態機跑流程
-        return;
-    }
-
     for (int i = 0; i < SystemInfo.Players.Count; i++)
     {
         Player player = SystemInfo.Players[i];
@@ -136,12 +123,17 @@ void Gaming()
         {
             continue;
         }
-
+        // 目前回合玩家
+        SystemInfo.CurrentId = player.Id;
+        // 印出總覽
         PrintSummary();
+        // 印出提示訊息
         PrintHint(player.HandCards);
+        // 輸入押注籌碼
+        Console.WriteLine($"籌碼餘額:{player.Chips}，請輸入「押注籌碼(最大值:{player.Chips})」或輸入「p」pass回合");
         SystemInfo.Cmd = CmdHelper.GetExpectedInput(
             expectedInputs: (input) => input.ToLower() == "p" || (int.TryParse(input, out int bet) && bet <= player.Chips),
-            appendErrorMsg: $"籌碼餘額:{player.Chips}，請輸入押注籌碼(最大值:{player.Chips})"
+            errorMsg: $"籌碼餘額:{player.Chips}，請輸入「押注籌碼(最大值:{player.Chips})」或輸入「p」pass回合"
         );
         if (SystemInfo.Cmd.ToLower() == "p")
         {
@@ -162,6 +154,43 @@ void Gaming()
                 Console.WriteLine($"點數共{player.TotalPoint}，超過21點，您已出局");
             }
         }
+
+        // 檢查是否只剩下一位玩家尚未pass
+        bool isRoundOver = SystemInfo.Players.Where(x => !x.IsPass).Count() == 1;
+        if (isRoundOver)
+        {
+            // 發放池底
+            Player winer = SystemInfo.Players.Where(x => !x.IsPass).Single();
+            winer.Chips += SystemInfo.TotalBet;
+            Console.WriteLine($"回合結束，勝者:玩家{winer.Id}，獲得籌碼{SystemInfo.TotalBet}");
+
+            // 決定接下來流程
+            // 檢查是否只剩一位有籌碼,若只剩一位有籌碼,則限制只能「重新開始(i)」or「結束遊戲(q)」
+            bool isOnlyOneHasChips = SystemInfo.Players.Where(x => x.Chips > 0).Count() == 1;
+            if (isOnlyOneHasChips)
+            {
+                Console.WriteLine("i:重新開始\tq:結束遊戲");
+                SystemInfo.Cmd = CmdHelper.GetExpectedInput(
+                    expectedInputs: (input) => new[] { "i", "q" }.Contains(input.ToLower()),
+                    appendErrorMsg: "i:重新開始\tq:結束遊戲"
+                );
+            }
+            else
+            {
+                Console.WriteLine("i:重新開始\tr:重開一局\tq:結束遊戲");
+                SystemInfo.Cmd = CmdHelper.GetExpectedInput(
+                    expectedInputs: (input) => new[] { "i", "r", "q" }.Contains(input.ToLower()),
+                    appendErrorMsg: "i:重新開始\tr:重開一局\tq:結束遊戲"
+                );
+            }
+            // 返回狀態機跑流程
+            return;
+        }
+        else
+        {
+            // 繼續遊戲
+            SystemInfo.Cmd = "g";
+        }
     }
 }
 
@@ -178,7 +207,7 @@ while (SystemInfo.Cmd.ToLower() != "q")
         // 重開一局
         "r" => new Action(() => { Restart(); SystemInfo.Cmd = "g"; }),
         // 遊戲中
-        "g" => new Action(() => { Gaming(); SystemInfo.Cmd = ""; }),
+        "g" => new Action(() => { Gaming(); }),
         // 指令錯誤
         _ => new Action(() =>
         {
