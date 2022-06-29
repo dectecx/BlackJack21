@@ -10,46 +10,43 @@
 ⚫ 以迴圈詢問玩家，在一局結束後是否要再重開一局。可加入賭金的設計，讓遊戲更接近現實玩法。
 */
 
+using System.Reflection;
+
 List<Poker> pokers = null!;
 int playerCnt = 2;
 List<Player> players = null!;
 string cmd = "i";
+
+/// <summary>
+/// 初始化
+/// </summary>
+void Initial()
+{
+    pokers = new();
+    foreach (FieldInfo cardValueProp in typeof(CardValue).GetFields())
+    {
+        object cardValue = cardValueProp.GetValue(null)!;
+        foreach (CardSuit suit in typeof(CardSuit).GetEnumValues())
+        {
+            pokers.Add(new Poker { Card = cardValueProp.Name, Suit = suit, Point = (int)cardValue, IsUse = false });
+        }
+    }
+
+    players = new();
+    for (int i = 0; i < playerCnt; i++)
+    {
+        players.Add(new() { HandCards = new(), IsPass = false });
+    }
+}
+
 while (cmd.ToLower() != "q")
 {
     // 重新開始
     if (cmd.ToLower() == "i")
     {
-        pokers = new();
-        foreach (Card card in typeof(Card).GetEnumValues())
-        {
-            foreach (CardSuit suit in typeof(CardSuit).GetEnumValues())
-            {
-                pokers.Add(new Poker { Card = card, Suit = suit, Point = (int)card, IsUse = false });
-            }
-        }
-
-        players = new();
-        for (int i = 0; i < playerCnt; i++)
-        {
-            players.Add(new() { HandCards = new(), IsPass = false });
-        }
+        Initial();
     }
 
-    // 抽出不重複的牌
-    Poker Gacha()
-    {
-        Random rand = new();
-        while (true)
-        {
-            int index = rand.Next(0, 51);
-            Poker gacha = pokers[index];
-            if (!gacha.IsUse)
-            {
-                pokers[index].IsUse = true;
-                return gacha;
-            }
-        }
-    }
     for (int i = 0; i < players.Count; i++)
     {
         // 略過已pass玩家
@@ -64,7 +61,7 @@ while (cmd.ToLower() != "q")
             cmd = Console.ReadLine()!;
             if (cmd.ToLower() == "g")
             {
-                players[i].HandCards.Add(Gacha());
+                players[i].Gacha(pokers);
                 if (players[i].TotalPoint > 21)
                 {
                     players[i].IsPass = true;
@@ -91,21 +88,21 @@ while (cmd.ToLower() != "q")
 /// <summary>
 /// 牌
 /// </summary>
-enum Card
+static class CardValue
 {
-    A = 11,
-    _2 = 2,
-    _3,
-    _4,
-    _5,
-    _6,
-    _7,
-    _8,
-    _9,
-    _10,
-    J = 10,
-    Q = 10,
-    K = 10
+    public const int A = 11;
+    public const int _2 = 2;
+    public const int _3 = 3;
+    public const int _4 = 4;
+    public const int _5 = 5;
+    public const int _6 = 6;
+    public const int _7 = 7;
+    public const int _8 = 8;
+    public const int _9 = 9;
+    public const int _10 = 10;
+    public const int J = 10;
+    public const int Q = 10;
+    public const int K = 10;
 }
 
 /// <summary>
@@ -142,7 +139,7 @@ class Poker
     /// <summary>
     /// 牌
     /// </summary>
-    public Card Card { get; set; }
+    public string Card { get; set; } = null!;
 
     /// <summary>
     /// 花色
@@ -180,9 +177,9 @@ class Player
             int total = PointWithoutAce;
             for (int i = 0; i < CountOfAce; i++)
             {
-                if (total + (int)Card.A <= 21)
+                if (total + (int)CardValue.A <= 21)
                 {
-                    total += (int)Card.A;
+                    total += (int)CardValue.A;
                 }
                 else
                 {
@@ -196,15 +193,35 @@ class Player
     /// <summary>
     /// 不含Ace總點數
     /// </summary>
-    public int PointWithoutAce => HandCards?.Where(x => x.Card != Card.A).Select(x => x.Point).Sum() ?? 0;
+    public int PointWithoutAce => HandCards?.Where(x => x.Card != nameof(CardValue.A)).Select(x => x.Point).Sum() ?? 0;
 
     /// <summary>
     /// Ace牌數量
     /// </summary>
-    public int CountOfAce => HandCards?.Where(x => x.Card == Card.A).Count() ?? 0;
+    public int CountOfAce => HandCards?.Where(x => x.Card == nameof(CardValue.A)).Count() ?? 0;
 
     /// <summary>
     /// 是否停手
     /// </summary>
     public bool IsPass { get; set; }
+
+    /// <summary>
+    /// 抽卡
+    /// </summary>
+    /// <param name="pokers">牌庫</param>
+    public void Gacha(IEnumerable<Poker> pokers)
+    {
+        Random rand = new();
+        while (true)
+        {
+            int index = rand.Next(0, 51);
+            Poker gacha = pokers.ToArray()[index];
+            if (!gacha.IsUse)
+            {
+                gacha.IsUse = true;
+                this.HandCards.Add(gacha);
+                break;
+            }
+        }
+    }
 }
