@@ -13,6 +13,7 @@
 using BlackJack21;
 using BlackJack21.Constant;
 using BlackJack21.Enums;
+using BlackJack21.Helper;
 using BlackJack21.Models;
 using System.Reflection;
 
@@ -26,9 +27,6 @@ int defaultChips = 100;
 /// </summary>
 void Initial()
 {
-    SystemInfo.CurrentId = SystemInfo.Players.First().Id;
-    SystemInfo.TotalBet = 0;
-
     SystemInfo.Pokers = new();
     foreach (FieldInfo cardValueProp in typeof(CardValue).GetFields())
     {
@@ -44,6 +42,9 @@ void Initial()
     {
         SystemInfo.Players.Add(new() { Id = i + 1, Chips = defaultChips, Bet = 0, HandCards = new(), IsPass = false });
     }
+
+    SystemInfo.CurrentId = SystemInfo.Players.First().Id;
+    SystemInfo.TotalBet = 0;
 }
 
 /// <summary>
@@ -104,32 +105,46 @@ double CalProbability(List<Poker> handCards)
     return 33.5;
 }
 
+SystemInfo.Cmd = "i";
 while (SystemInfo.Cmd.ToLower() != "q")
 {
-    // 重新開始
-    if (SystemInfo.Cmd.ToLower() == "i")
+    Action action = SystemInfo.Cmd.ToLower() switch
     {
-        Initial();
-        SystemInfo.Cmd = "";
-    }
-    // 重開一局
-    if (SystemInfo.Cmd.ToLower() == "r")
-    {
-        Restart();
-        SystemInfo.Cmd = "";
-    }
+        // 重新開始
+        "i" => new Action(() => { Initial(); SystemInfo.Cmd = "g"; }),
+        // 重開一局
+        "r" => new Action(() => { Restart(); SystemInfo.Cmd = "g"; }),
+        // 遊戲中
+        "g" => new Action(() => { Gaming(); SystemInfo.Cmd = ""; }),
+        // 指令錯誤
+        _ => new Action(() =>
+        {
+            Console.WriteLine("輸入格式錯誤，請重新輸入");
+            SystemInfo.Cmd = CmdHelper.GetExpectedInput(new[] { "i", "r" });
+        })
+    };
+    action.Invoke();
+}
+Console.WriteLine("遊戲結束");
+
+/// <summary>
+/// 遊戲中
+/// </summary>
+void Gaming()
+{
     // 檢查是否剩下一位
     if (SystemInfo.Players.Where(x => !x.IsPass).Count() == 1)
     {
+        // 發放池底
         Player player = SystemInfo.Players.Where(x => !x.IsPass).Single();
-        Console.WriteLine($"回合結束，勝者:玩家{player.Id}，獲得籌碼{SystemInfo.TotalBet}");
         player.Chips += SystemInfo.TotalBet;
-        player.Bet = 0;
-        SystemInfo.TotalBet = 0;
-        
+        Console.WriteLine($"回合結束，勝者:玩家{player.Id}，獲得籌碼{SystemInfo.TotalBet}");
+
+        // 決定接下來流程
         Console.WriteLine("i:重新開始\tr:重開一局\tq:結束遊戲");
-        SystemInfo.Cmd = Console.ReadLine()!;
-        continue;
+        SystemInfo.Cmd = CmdHelper.GetExpectedInput(new[] { "i", "r", "q" }, appendErrorMsg: "i:重新開始\tr:重開一局\tq:結束遊戲");
+        // 返回狀態機跑流程
+        return;
     }
 
     for (int i = 0; i < SystemInfo.Players.Count; i++)

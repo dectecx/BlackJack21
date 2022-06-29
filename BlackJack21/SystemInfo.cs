@@ -25,10 +25,10 @@ internal static class SystemInfo
     /// <summary>
     /// 池底
     /// </summary>
-    public static int TotalBet = 0;
+    public static int TotalBet;
 
     /// <summary>
     /// 命令暫存
     /// </summary>
-    public static string Cmd = "i";
+    public static string Cmd = null!;
 }
