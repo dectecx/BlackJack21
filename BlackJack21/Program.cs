@@ -10,38 +10,39 @@
 ⚫ 以迴圈詢問玩家，在一局結束後是否要再重開一局。可加入賭金的設計，讓遊戲更接近現實玩法。
 */
 
+using BlackJack21;
+using BlackJack21.Constant;
+using BlackJack21.Enums;
+using BlackJack21.Models;
 using System.Reflection;
 
-// 牌庫
-List<Poker> pokers = null!;
 // 玩家數
 int playerCnt = 2;
-// 玩家清單
-List<Player> players = null!;
-// 池底
-int totalBet = 0;
-// 命令暫存
-string cmd = "i";
+// 起始籌碼
+int defaultChips = 100;
 
 /// <summary>
 /// 初始化
 /// </summary>
 void Initial()
 {
-    pokers = new();
+    SystemInfo.CurrentId = SystemInfo.Players.First().Id;
+    SystemInfo.TotalBet = 0;
+
+    SystemInfo.Pokers = new();
     foreach (FieldInfo cardValueProp in typeof(CardValue).GetFields())
     {
         object cardValue = cardValueProp.GetValue(null)!;
         foreach (CardSuit suit in typeof(CardSuit).GetEnumValues())
         {
-            pokers.Add(new Poker { Card = cardValueProp.Name, Suit = suit, Point = (int)cardValue, IsUse = false });
+            SystemInfo.Pokers.Add(new Poker { CardValue = cardValueProp.Name, Suit = suit, Point = (int)cardValue, IsUse = false });
         }
     }
 
-    players = new();
+    SystemInfo.Players = new();
     for (int i = 0; i < playerCnt; i++)
     {
-        players.Add(new() { Id = i + 1, Chips = 100, Bet = 0, HandCards = new(), IsPass = false });
+        SystemInfo.Players.Add(new() { Id = i + 1, Chips = defaultChips, Bet = 0, HandCards = new(), IsPass = false });
     }
 }
 
@@ -50,11 +51,13 @@ void Initial()
 /// </summary>
 void Restart()
 {
-    foreach (Poker item in pokers)
+    SystemInfo.CurrentId = SystemInfo.Players.Where(x => !x.IsPass).Single().Id;
+    SystemInfo.TotalBet = 0;
+    foreach (Poker item in SystemInfo.Pokers)
     {
         item.IsUse = false;
     }
-    foreach (Player item in players)
+    foreach (Player item in SystemInfo.Players)
     {
         item.HandCards = new();
         item.Bet = 0;
@@ -68,11 +71,11 @@ void Restart()
 void PrintSummary()
 {
     string msg = $"=====Summary=====\n" +
-        $"\t池底\t|\t{totalBet}\n" +
+        $"\t池底\t|\t{SystemInfo.TotalBet}\n" +
         $"\t回合\t|\t玩家\t|\t點數\t|\t押注\t|\t爆牌機率\n";
-    foreach (Player player in players)
+    foreach (Player player in SystemInfo.Players)
     {
-         msg += $"\t{(player != null ? ">" : null)}\t|\t" +
+         msg += $"\t{(player.Id == SystemInfo.CurrentId ? ">" : null)}\t|\t" +
             $"{player.Id}\t|\t" +
             $"{player.TotalPoint}\t|\t" +
             $"{player.Bet}\t|\t" +
@@ -97,41 +100,41 @@ void PrintHint(List<Poker> handCards)
 double CalProbability(List<Poker> handCards)
 {
     // TODO: 待完成功能
-    pokers.Where(x => !x.IsUse);
+    SystemInfo.Pokers.Where(x => !x.IsUse);
     return 33.5;
 }
 
-while (cmd.ToLower() != "q")
+while (SystemInfo.Cmd.ToLower() != "q")
 {
     // 重新開始
-    if (cmd.ToLower() == "i")
+    if (SystemInfo.Cmd.ToLower() == "i")
     {
         Initial();
-        cmd = "";
+        SystemInfo.Cmd = "";
     }
     // 重開一局
-    if (cmd.ToLower() == "r")
+    if (SystemInfo.Cmd.ToLower() == "r")
     {
         Restart();
-        cmd = "";
+        SystemInfo.Cmd = "";
     }
     // 檢查是否剩下一位
-    if (players.Where(x => !x.IsPass).Count() == 1)
+    if (SystemInfo.Players.Where(x => !x.IsPass).Count() == 1)
     {
-        Player player = players.Where(x => !x.IsPass).Single();
-        Console.WriteLine($"回合結束，勝者:玩家{player.Id}，獲得籌碼{totalBet}");
-        player.Chips += totalBet;
+        Player player = SystemInfo.Players.Where(x => !x.IsPass).Single();
+        Console.WriteLine($"回合結束，勝者:玩家{player.Id}，獲得籌碼{SystemInfo.TotalBet}");
+        player.Chips += SystemInfo.TotalBet;
         player.Bet = 0;
-        totalBet = 0;
+        SystemInfo.TotalBet = 0;
         
         Console.WriteLine("i:重新開始\tr:重開一局\tq:結束遊戲");
-        cmd = Console.ReadLine()!;
+        SystemInfo.Cmd = Console.ReadLine()!;
         continue;
     }
 
-    for (int i = 0; i < players.Count; i++)
+    for (int i = 0; i < SystemInfo.Players.Count; i++)
     {
-        Player player = players[i];
+        Player player = SystemInfo.Players[i];
         // 略過已pass玩家
         if (player.IsPass)
         {
@@ -142,14 +145,14 @@ while (cmd.ToLower() != "q")
         PrintHint(player.HandCards);
         while (true)
         {
-            cmd = Console.ReadLine()!;
-            if (int.TryParse(cmd, out int bet) && bet <= player.Chips)
+            SystemInfo.Cmd = Console.ReadLine()!;
+            if (int.TryParse(SystemInfo.Cmd, out int bet) && bet <= player.Chips)
             {
                 player.Chips -= bet;
                 player.Bet += bet;
-                totalBet += bet;
+                SystemInfo.TotalBet += bet;
 
-                player.Gacha(pokers);
+                player.Gacha(SystemInfo.Pokers);
                 if (player.TotalPoint > 21)
                 {
                     player.IsPass = true;
@@ -157,7 +160,7 @@ while (cmd.ToLower() != "q")
                 }
                 break;
             }
-            else if (cmd.ToLower() == "p")
+            else if (SystemInfo.Cmd.ToLower() == "p")
             {
                 player.IsPass = true;
                 break;
@@ -173,162 +176,6 @@ while (cmd.ToLower() != "q")
                     Console.WriteLine("輸入格式錯誤，請重新輸入");
                 }
                 PrintHint(player.HandCards);
-            }
-        }
-    }
-}
-
-/// <summary>
-/// 牌
-/// </summary>
-static class CardValue
-{
-    public const int A = 11;
-    public const int _2 = 2;
-    public const int _3 = 3;
-    public const int _4 = 4;
-    public const int _5 = 5;
-    public const int _6 = 6;
-    public const int _7 = 7;
-    public const int _8 = 8;
-    public const int _9 = 9;
-    public const int _10 = 10;
-    public const int J = 10;
-    public const int Q = 10;
-    public const int K = 10;
-}
-
-/// <summary>
-/// 花色
-/// </summary>
-enum CardSuit
-{
-    /// <summary>
-    /// 梅花
-    /// </summary>
-    club,
-
-    /// <summary>
-    /// 方塊
-    /// </summary>
-    diamond,
-
-    /// <summary>
-    /// 紅心
-    /// </summary>
-    heart,
-
-    /// <summary>
-    /// 黑桃
-    /// </summary>
-    spade
-}
-
-/// <summary>
-/// 撲克牌
-/// </summary>
-class Poker
-{
-    /// <summary>
-    /// 牌
-    /// </summary>
-    public string Card { get; set; } = null!;
-
-    /// <summary>
-    /// 花色
-    /// </summary>
-    public CardSuit Suit { get; set; }
-
-    /// <summary>
-    /// 點數
-    /// </summary>
-    public int Point { get; set; }
-
-    /// <summary>
-    /// 是否已被抽走
-    /// </summary>
-    public bool IsUse { get; set; }
-}
-
-/// <summary>
-/// 玩家
-/// </summary>
-class Player
-{
-    /// <summary>
-    /// 識別碼
-    /// </summary>
-    public int Id { get; set; }
-
-    /// <summary>
-    /// 籌碼
-    /// </summary>
-    public int Chips { get; set; }
-
-    /// <summary>
-    /// 押注籌碼
-    /// </summary>
-    public int Bet { get; set; }
-
-    /// <summary>
-    /// 手牌
-    /// </summary>
-    public List<Poker> HandCards { get; set; } = null!;
-
-    /// <summary>
-    /// 總點數
-    /// </summary>
-    public int TotalPoint
-    {
-        get
-        {
-            int total = PointWithoutAce;
-            for (int i = 0; i < CountOfAce; i++)
-            {
-                if (total + (int)CardValue.A <= 21)
-                {
-                    total += (int)CardValue.A;
-                }
-                else
-                {
-                    total += 1;
-                }
-            }
-            return total;
-        }
-    }
-
-    /// <summary>
-    /// 不含Ace總點數
-    /// </summary>
-    public int PointWithoutAce => HandCards?.Where(x => x.Card != nameof(CardValue.A)).Select(x => x.Point).Sum() ?? 0;
-
-    /// <summary>
-    /// Ace牌數量
-    /// </summary>
-    public int CountOfAce => HandCards?.Where(x => x.Card == nameof(CardValue.A)).Count() ?? 0;
-
-    /// <summary>
-    /// 是否停手
-    /// </summary>
-    public bool IsPass { get; set; }
-
-    /// <summary>
-    /// 抽卡
-    /// </summary>
-    /// <param name="pokers">牌庫</param>
-    public void Gacha(IEnumerable<Poker> pokers)
-    {
-        Random rand = new();
-        while (true)
-        {
-            int index = rand.Next(0, 51);
-            Poker gacha = pokers.ToArray()[index];
-            if (!gacha.IsUse)
-            {
-                gacha.IsUse = true;
-                this.HandCards.Add(gacha);
-                break;
             }
         }
     }
