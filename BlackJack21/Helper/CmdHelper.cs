@@ -1,4 +1,6 @@
-﻿namespace BlackJack21.Helper;
+﻿using BlackJack21.Extension;
+
+namespace BlackJack21.Helper;
 
 /// <summary>
 /// 命令列Helper
@@ -8,18 +10,21 @@ public static class CmdHelper
     /// <summary>
     /// 讀取使用者輸入,直到輸入內容為預期的input為止
     /// </summary>
-    /// <param name="expectedInputs">預期的input</param>
+    /// <param name="expectedInputsDelegate">預期的input委派</param>
+    /// <param name="showMsg">輸入前的提示訊息</param>
     /// <param name="errorMsg">輸入非預期input時顯示的錯誤訊息</param>
     /// <returns>預期的input</returns>
     public static string GetExpectedInput(
-        Func<string, bool> expectedInputs,
-        string errorMsg = "輸入格式錯誤，請重新輸入。",
-        string appendErrorMsg = "")
+        Func<string, bool> expectedInputsDelegate,
+        string showMsg,
+        string errorMsg = "輸入錯誤！")
     {
+        ConsoleColor.Gray.WriteLine(showMsg);
         string input = Console.ReadLine()!;
-        while (!expectedInputs.Invoke(input))
+        while (!expectedInputsDelegate.Invoke(input))
         {
-            Console.WriteLine(errorMsg + appendErrorMsg);
+            ConsoleColor.DarkRed.WriteLine(errorMsg);
+            ConsoleColor.Gray.WriteLine(showMsg);
             input = Console.ReadLine()!;
         }
         return input;

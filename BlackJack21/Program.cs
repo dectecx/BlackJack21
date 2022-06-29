@@ -13,6 +13,7 @@
 using BlackJack21;
 using BlackJack21.Constant;
 using BlackJack21.Enums;
+using BlackJack21.Extension;
 using BlackJack21.Helper;
 using BlackJack21.Models;
 using System.Reflection;
@@ -21,6 +22,31 @@ using System.Reflection;
 int playerCnt = 2;
 // 起始籌碼
 int defaultChips = 100;
+// 總覽高度
+int summaryHeight = 3;
+// 印出訊息的起始index
+int printIndex = summaryHeight + playerCnt;
+// 最大印出訊息的高度(預設只會輸出5行內,每次輸出都會把該5行清空)
+int printMaxIndex = printIndex + 5;
+
+/// <summary>
+/// 清空指定範圍
+/// </summary>
+void ConsoleClearRange(int topStart, int topEnd)
+{
+    if (topStart > topEnd)
+    {
+        throw new ArgumentException($"{nameof(topStart)}({topStart})不可大於{nameof(topEnd)}({topEnd})");
+    }
+
+    // 清空指定範圍
+    Console.SetCursorPosition(0, topStart);
+    for (int i = 0; i < topEnd - topStart + 1; i++)
+    {
+        Console.WriteLine(new string(' ', Console.WindowWidth));
+    }
+    Console.SetCursorPosition(0, topStart);
+}
 
 /// <summary>
 /// 初始化
@@ -76,18 +102,21 @@ void Restart()
 /// </summary>
 void PrintSummary()
 {
-    string msg = $"=====Summary=====\n" +
-        $"\t池底\t|\t{SystemInfo.TotalBet}\n" +
-        $"\t回合\t|\t玩家\t|\t點數\t|\t押注\t|\t爆牌機率\n";
+    // 清空總覽區塊
+    ConsoleClearRange(0, summaryHeight + playerCnt);
+    
+    ConsoleColor.Cyan.WriteLine("====================\t\tSummary\t\t====================");
+    ConsoleColor.Cyan.WriteLine($"\t池底\t|\t{SystemInfo.TotalBet}");
+    ConsoleColor.Cyan.WriteLine("\t回合\t|\t玩家\t|\t點數\t|\t押注\t|\t爆牌機率");
     foreach (Player player in SystemInfo.Players)
     {
-         msg += $"\t{(player.Id == SystemInfo.CurrentId ? ">" : null)}\t|\t" +
+         string msg = $"\t{(player.Id == SystemInfo.CurrentId ? ">" : null)}\t|\t" +
             $"{player.Id}\t|\t" +
             $"{player.TotalPoint}\t|\t" +
             $"{player.Bet}\t|\t" +
-            $"{0.0}\n";
+            $"{0.0}";
+        ConsoleColor.Cyan.WriteLine(msg);
     }
-    Console.WriteLine(msg);
 }
 
 /// <summary>
@@ -96,8 +125,9 @@ void PrintSummary()
 void PrintHint(List<Poker> handCards)
 {
     double p1 = CalProbability(handCards);
-    string msg = $"爆牌的機率(P1):{p1}%\t不爆牌的機率(P2):{100-p1}%\t數字:押注籌碼 p:Pass";
-    Console.WriteLine(msg);
+    string msg = $"爆牌的機率(P1):{p1}%\t不爆牌的機率(P2):{100-p1}%";
+    ConsoleClearRange(printIndex, printMaxIndex);
+    ConsoleColor.Yellow.WriteLine(msg, printIndex);
 }
 
 /// <summary>
@@ -130,10 +160,9 @@ void Gaming()
         // 印出提示訊息
         PrintHint(player.HandCards);
         // 輸入押注籌碼
-        Console.WriteLine($"籌碼餘額:{player.Chips}，請輸入「押注籌碼(最大值:{player.Chips})」或輸入「p」pass回合");
         SystemInfo.Cmd = CmdHelper.GetExpectedInput(
-            expectedInputs: (input) => input.ToLower() == "p" || (int.TryParse(input, out int bet) && bet <= player.Chips),
-            errorMsg: $"籌碼餘額:{player.Chips}，請輸入「押注籌碼(最大值:{player.Chips})」或輸入「p」pass回合"
+            showMsg: $"籌碼餘額:{player.Chips}，請輸入「押注籌碼(最大值:{player.Chips})」或輸入「p」pass回合",
+            expectedInputsDelegate: (input) => input.ToLower() == "p" || (int.TryParse(input, out int bet) && bet <= player.Chips)
         );
         if (SystemInfo.Cmd.ToLower() == "p")
         {
@@ -151,7 +180,8 @@ void Gaming()
             if (player.TotalPoint > 21)
             {
                 player.IsPass = true;
-                Console.WriteLine($"點數共{player.TotalPoint}，超過21點，您已出局");
+                ConsoleClearRange(printIndex, printMaxIndex);
+                ConsoleColor.DarkYellow.WriteLine($"點數共{player.TotalPoint}，超過21點，您已出局", printIndex);
             }
         }
 
@@ -162,25 +192,27 @@ void Gaming()
             // 發放池底
             Player winer = SystemInfo.Players.Where(x => !x.IsPass).Single();
             winer.Chips += SystemInfo.TotalBet;
-            Console.WriteLine($"回合結束，勝者:玩家{winer.Id}，獲得籌碼{SystemInfo.TotalBet}");
+            ConsoleClearRange(printIndex, printMaxIndex);
+            ConsoleColor.DarkGreen.WriteLine($"回合結束，勝者:玩家{winer.Id}，獲得籌碼{SystemInfo.TotalBet}", printIndex);
+
+            // 顯示總覽
+            PrintSummary();
 
             // 決定接下來流程
             // 檢查是否只剩一位有籌碼,若只剩一位有籌碼,則限制只能「重新開始(i)」or「結束遊戲(q)」
             bool isOnlyOneHasChips = SystemInfo.Players.Where(x => x.Chips > 0).Count() == 1;
             if (isOnlyOneHasChips)
             {
-                Console.WriteLine("i:重新開始\tq:結束遊戲");
                 SystemInfo.Cmd = CmdHelper.GetExpectedInput(
-                    expectedInputs: (input) => new[] { "i", "q" }.Contains(input.ToLower()),
-                    appendErrorMsg: "i:重新開始\tq:結束遊戲"
+                    showMsg: "i:重新開始\tq:結束遊戲",
+                    expectedInputsDelegate: (input) => new[] { "i", "q" }.Contains(input.ToLower())
                 );
             }
             else
             {
-                Console.WriteLine("i:重新開始\tr:重開一局\tq:結束遊戲");
                 SystemInfo.Cmd = CmdHelper.GetExpectedInput(
-                    expectedInputs: (input) => new[] { "i", "r", "q" }.Contains(input.ToLower()),
-                    appendErrorMsg: "i:重新開始\tr:重開一局\tq:結束遊戲"
+                    showMsg: "i:重新開始\tr:重開一局\tq:結束遊戲",
+                    expectedInputsDelegate: (input) => new[] { "i", "r", "q" }.Contains(input.ToLower())
                 );
             }
             // 返回狀態機跑流程
@@ -211,12 +243,14 @@ while (SystemInfo.Cmd.ToLower() != "q")
         // 指令錯誤
         _ => new Action(() =>
         {
-            Console.WriteLine("輸入格式錯誤，請重新輸入");
             SystemInfo.Cmd = CmdHelper.GetExpectedInput(
-                expectedInputs: (input) => new[] { "i", "r" }.Contains(input.ToLower())
+                showMsg: "i:重新開始\tr:重開一局\tq:結束遊戲",
+                expectedInputsDelegate: (input) => new[] { "i", "r" }.Contains(input.ToLower()),
+                errorMsg: "輸入格式錯誤，請重新輸入"
             );
         })
     };
     action.Invoke();
 }
-Console.WriteLine("遊戲結束");
+ConsoleClearRange(printIndex, printMaxIndex);
+ConsoleColor.Yellow.WriteLine("遊戲結束", printIndex);
