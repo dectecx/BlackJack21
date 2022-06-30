@@ -1,4 +1,4 @@
-﻿using BlackJack21.Extension;
+﻿using BlackJack21.Extensions;
 
 namespace BlackJack21.Helper;
 

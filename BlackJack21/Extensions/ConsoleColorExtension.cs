@@ -1,4 +1,4 @@
-﻿namespace BlackJack21.Extension;
+﻿namespace BlackJack21.Extensions;
 
 public static class ConsoleColorExtensions
 {

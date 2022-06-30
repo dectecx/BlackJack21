@@ -24,11 +24,12 @@ Line    輸出範本
 using BlackJack21;
 using BlackJack21.Constant;
 using BlackJack21.Enums;
-using BlackJack21.Extension;
+using BlackJack21.Extensions;
 using BlackJack21.Helper;
 using BlackJack21.Models;
 using System.Reflection;
 
+#region 參數設定
 // 玩家數
 int playerCnt = 2;
 // 起始籌碼
@@ -43,6 +44,7 @@ Range hintRange = (summaryRange.End.Value + 1)..(summaryRange.End.Value + 1);
 Range inputRange = (hintRange.End.Value + 1)..(hintRange.End.Value + 1);
 // 錯誤訊息範圍
 Range errorRange = (inputRange.End.Value + 1)..(inputRange.End.Value + 1);
+#endregion
 
 /// <summary>
 /// 初始化
@@ -101,19 +103,19 @@ void PrintSummary()
     // 清空總覽區塊
     CmdHelper.ConsoleClearRange(summaryRange);
 
-    ConsoleColor.Cyan.WriteLine("====================\t\tSummary\t\t====================", summaryRange.Start.Value);
-    ConsoleColor.Cyan.WriteLine($"\t池底\t|\t{SystemInfo.TotalBet}");
-    ConsoleColor.Cyan.WriteLine("\t回合|玩家|餘額|點數|押注|爆牌機率");
+    ConsoleColor.Cyan.WriteLine("===============\tSummary\t===============", summaryRange.Start.Value);
+    ConsoleColor.Cyan.WriteLine($"池底|{SystemInfo.TotalBet.ToAlignCenter(8)}");
+    ConsoleColor.Cyan.WriteLine("回合|玩家|籌碼餘額|手牌點數|押注|爆牌機率");
     foreach (Player player in SystemInfo.Players)
     {
-        string msg = $"\t{(player.Id == SystemInfo.CurrentId ? " >  " : null)}|" +
-           $"{player.Id}|" +
-           $"{player.Chips}|" +
-           $"{player.TotalPoint}|" +
-           $"{player.Bet}|";
+        string msg = $"{(player.Id == SystemInfo.CurrentId ? ">".ToAlignCenter(4) : "".ToAlignCenter(4))}|" +
+           $"{player.Id.ToAlignCenter(4)}|" +
+           $"{player.Chips.ToAlignCenter(8)}|" +
+           $"{player.TotalPoint.ToAlignCenter(8)}|" +
+           $"{player.Bet.ToAlignCenter(4)}|";
         double p1 = CalProbability(player.HandCards);
         ConsoleColor.Cyan.Write(msg);
-        ConsoleColor.Yellow.WriteLine($"{p1}%");
+        ConsoleColor.Yellow.WriteLine($"{p1}%".ToAlignCenter(8));
     }
 }
 
