@@ -11,13 +11,13 @@
 */
 /*
 Line    輸出範本
-0       ====================            Summary         ====================
-1               池底    |       0
-2               回合    |       玩家    |       點數    |       押注    |       爆牌機率
-2+n-1           >       |       1       |       0       |       0       |       33.5%
-2+n                     |       2       |       0       |       0       |       60.0%
+0       =============== Summary ===============
+1       池底|   0
+2       回合|玩家|籌碼餘額|手牌點數|押注|爆牌機率
+2+n-1    >  | 1  |  100   |   0    | 0  | 33.5%
+2+n         | 2  |  100   |   0    | 0  | 33.5%
 3+n     {{提示訊息}}
-4+n     {{使用者輸入}}
+4+n     >{{使用者輸入}}
 5+n     {{錯誤訊息}}
 */
 
@@ -31,7 +31,7 @@ using System.Reflection;
 
 #region 參數設定
 // 玩家數
-int playerCnt = 2;
+int playerCnt = 3;
 // 起始籌碼
 int defaultChips = 100;
 // 總畫面大小
@@ -76,8 +76,9 @@ void Initial()
 /// </summary>
 void Restart()
 {
-    // 從勝者開始
-    SystemInfo.CurrentId = SystemInfo.Players.Where(x => !x.IsPass).Single().Id;
+    // 重新排序玩家順序,從勝者開始
+    Player winer = SystemInfo.Players.Where(x => !x.IsPass).Single();
+    SystemInfo.CurrentId = winer.Id;
     // 歸零池底
     SystemInfo.TotalBet = 0;
     // 賦歸牌庫狀態
@@ -124,9 +125,17 @@ void PrintSummary()
 /// </summary>
 double CalProbability(List<Poker> handCards)
 {
-    // TODO: 待完成功能
-    SystemInfo.Pokers.Where(x => !x.IsUse);
-    return 33.5;
+    // 當前最小的總點數(Ace一律當1點)
+    int minTotalPoint = handCards?.Sum(x => x.CardValue == nameof(CardValue.A) ? 1 : x.Point) ?? 0;
+    // 剩餘點數
+    int remainPoint = 21 - minTotalPoint;
+    // 牌庫剩餘的牌
+    IEnumerable<int> remainPokers = SystemInfo.Pokers.Where(x => !x.IsUse)
+                                                     .Select(x => x.CardValue == nameof(CardValue.A) ? 1 : x.Point);
+    // 爆牌機率 = 超過剩餘點數的牌庫數量 / 牌庫剩餘數量
+    double boomProbability =
+        Math.Round((double)remainPokers.Count(x => x > remainPoint) / remainPokers.Count() * 100, 2, MidpointRounding.AwayFromZero);
+    return boomProbability;
 }
 
 /// <summary>
@@ -134,9 +143,10 @@ double CalProbability(List<Poker> handCards)
 /// </summary>
 void Gaming()
 {
-    for (int i = 0; i < SystemInfo.Players.Count; i++)
+    // 目前回合玩家
+    int currentIndex = SystemInfo.Players.IndexOf(SystemInfo.Players.Single(x => x.Id == SystemInfo.CurrentId));
+    foreach (Player player in SystemInfo.Players.Skip(currentIndex).Concat(SystemInfo.Players.Take(currentIndex)))
     {
-        Player player = SystemInfo.Players[i];
         // 略過已pass玩家
         if (player.IsPass)
         {
@@ -147,6 +157,7 @@ void Gaming()
         // 印出總覽
         PrintSummary();
         // 輸入押注籌碼
+        // TODO: 應加入最小值判斷
         SystemInfo.Cmd = CmdHelper.GetExpectedInput(
             expectedInputsDelegate: (input) => input.ToLower() == "p" || (int.TryParse(input, out int bet) && bet <= player.Chips),
             showMsg: $"籌碼餘額:{player.Chips}，請輸入「押注籌碼(最大值:{player.Chips})」或輸入「p」pass回合",
