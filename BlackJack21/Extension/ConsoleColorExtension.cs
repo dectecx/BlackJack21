@@ -19,10 +19,8 @@ public static class ConsoleColorExtensions
         }
 
         ConsoleColor originalForegroundColor = Console.ForegroundColor;
-
         Console.ForegroundColor = foregroundColor;
         Console.Write(value);
-
         Console.ForegroundColor = originalForegroundColor;
     }
 
@@ -42,11 +40,9 @@ public static class ConsoleColorExtensions
             Console.SetCursorPosition(0, cursorPosition.Value);
         }
 
-        ConsoleColor originalForegroundColor = Console.ForegroundColor;
-        
+        ConsoleColor originalForegroundColor = Console.ForegroundColor;        
         Console.ForegroundColor = foregroundColor;
         Console.WriteLine(value);
-
         Console.ForegroundColor = originalForegroundColor;
     }
 }
