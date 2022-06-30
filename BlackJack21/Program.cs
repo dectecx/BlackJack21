@@ -64,10 +64,18 @@ void Initial()
     SystemInfo.Players = new();
     for (int i = 0; i < playerCnt; i++)
     {
-        SystemInfo.Players.Add(new() { Id = i + 1, Chips = defaultChips, Bet = 0, HandCards = new(), IsPass = false });
+        SystemInfo.Players.Add(new()
+        {
+            Index = i,
+            Name = ((char)('A' + i)).ToString(),
+            Chips = defaultChips,
+            Bet = 0,
+            HandCards = new(),
+            IsPass = false
+        });
     }
 
-    SystemInfo.CurrentId = SystemInfo.Players.First().Id;
+    SystemInfo.CurrentIndex = SystemInfo.Players.First().Index;
     SystemInfo.TotalBet = 0;
 }
 
@@ -78,7 +86,7 @@ void Restart()
 {
     // 重新排序玩家順序,從勝者開始
     Player winer = SystemInfo.Players.Where(x => !x.IsPass).Single();
-    SystemInfo.CurrentId = winer.Id;
+    SystemInfo.CurrentIndex = winer.Index;
     // 歸零池底
     SystemInfo.TotalBet = 0;
     // 賦歸牌庫狀態
@@ -109,8 +117,8 @@ void PrintSummary()
     ConsoleColor.Cyan.WriteLine("回合|玩家|籌碼餘額|手牌點數|押注|爆牌機率");
     foreach (Player player in SystemInfo.Players)
     {
-        string msg = $"{(player.Id == SystemInfo.CurrentId ? ">".ToAlignCenter(4) : "".ToAlignCenter(4))}|" +
-           $"{player.Id.ToAlignCenter(4)}|" +
+        string msg = $"{(player.Index == SystemInfo.CurrentIndex ? ">".ToAlignCenter(4) : "".ToAlignCenter(4))}|" +
+           $"{player.Name.ToAlignCenter(4)}|" +
            $"{player.Chips.ToAlignCenter(8)}|" +
            $"{player.TotalPoint.ToAlignCenter(8)}|" +
            $"{player.Bet.ToAlignCenter(4)}|";
@@ -143,8 +151,8 @@ double CalProbability(List<Poker> handCards)
 /// </summary>
 void Gaming()
 {
-    // 目前回合玩家
-    int currentIndex = SystemInfo.Players.IndexOf(SystemInfo.Players.Single(x => x.Id == SystemInfo.CurrentId));
+    // 目前回合玩家Index
+    int currentIndex = SystemInfo.CurrentIndex;
     foreach (Player player in SystemInfo.Players.Skip(currentIndex).Concat(SystemInfo.Players.Take(currentIndex)))
     {
         // 略過已pass玩家
@@ -152,8 +160,8 @@ void Gaming()
         {
             continue;
         }
-        // 目前回合玩家
-        SystemInfo.CurrentId = player.Id;
+        // 目前回合玩家Index
+        SystemInfo.CurrentIndex = player.Index;
         // 印出總覽
         PrintSummary();
         // 輸入押注籌碼
@@ -194,7 +202,7 @@ void Gaming()
             Player winer = SystemInfo.Players.Where(x => !x.IsPass).Single();
             winer.Chips += SystemInfo.TotalBet;
             CmdHelper.ConsoleClearRange(errorRange);
-            ConsoleColor.DarkGreen.WriteLine($"回合結束，勝者:玩家{winer.Id}，獲得籌碼{SystemInfo.TotalBet}", errorRange.Start.Value);
+            ConsoleColor.DarkGreen.WriteLine($"回合結束，勝者:玩家{winer.Name}，獲得籌碼{SystemInfo.TotalBet}", errorRange.Start.Value);
 
             // 顯示總覽
             PrintSummary();
@@ -230,6 +238,7 @@ void Gaming()
             // 繼續遊戲
             SystemInfo.Cmd = "g";
         }
+        SystemInfo.CurrentIndex++;
     }
 }
 

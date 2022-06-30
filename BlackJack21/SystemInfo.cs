@@ -18,9 +18,9 @@ internal static class SystemInfo
     public static List<Player> Players = null!;
 
     /// <summary>
-    /// 目前回合玩家
+    /// 目前回合玩家Index
     /// </summary>
-    public static int CurrentId;
+    public static int CurrentIndex;
 
     /// <summary>
     /// 池底

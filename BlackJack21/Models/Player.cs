@@ -8,9 +8,14 @@ namespace BlackJack21.Models;
 class Player
 {
     /// <summary>
-    /// 識別碼
+    /// Index
     /// </summary>
-    public int Id { get; set; }
+    public int Index { get; set; }
+
+    /// <summary>
+    /// 玩家名稱
+    /// </summary>
+    public string Name { get; set; } = null!;
 
     /// <summary>
     /// 籌碼
