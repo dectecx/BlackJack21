@@ -77,9 +77,9 @@ class Player
     public void Gacha(IEnumerable<Poker> pokers)
     {
         Random rand = new();
-        while (true)
+        while (pokers.Any(x => !x.IsUse))
         {
-            int index = rand.Next(0, 51);
+            int index = rand.Next(0, 52);
             Poker gacha = pokers.ToArray()[index];
             if (!gacha.IsUse)
             {

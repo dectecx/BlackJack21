@@ -31,7 +31,7 @@ using System.Reflection;
 
 #region 參數設定
 // 玩家數
-int playerCnt = 3;
+int playerCnt = 10;
 // 起始籌碼
 int defaultChips = 100;
 // 總畫面大小
